@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Calendar</title>
+	<link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">	
+	<link href="./css/c3.css" rel="stylesheet" type="text/css">
+
+	<script src="./js/d3.min.js" charset="utf-8"></script>
+	<script src="./js/c3.min.js"></script>
+	<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.1.js"></script>
+	<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+</head>
+<body>
+<style type="text/css">
+
+	#chart1 {
+		height:200px;
+	}
+
+	.chart-title{
+		text-align: center;
+		margin-top: 10px;
+	}
+
+	#date-string {
+		font-size: 12px;
+		margin-top: 25px;
+	}
+
+	.domain {
+		stroke:#FFF;
+	}
+	
+	.released-header{
+		/*height: 200px;*/
+		/*background-color: green;*/
+	}
+
+	.title-container {
+		padding-left: 0px;
+		padding-right: 0px;
+	}
+
+</style>
+<div class="container">
+	<!-- <table>
+		<tr>
+			<th>Report</th>
+			<th>Value</th>		
+			<th>Prior</th>
+			<th>Actual</th>
+			<th>Time</th>		
+			<th>For</th>
+		</tr>
+	</table> -->
+	<div class='col-sm-6 col-sm-offset-3 title-container'>
+		<h1 id='title'>Boxscore<span id='date-string' class='pull-right text-muted'></span></h1>
+	</div>
+	
+	</br>
+	<div class="panel panel-default col-sm-6 col-sm-offset-3">
+	    <div class="row released-header">
+	    	<div id='chart1'></div>
+	    </div>
+	</div>
+
+
+	<!-- <div class="panel panel-default col-sm-6 col-sm-offset-3 upcoming">
+	    <div class="row">
+		    <div class="col-xs-12">
+		    	<h3></h3>
+		    	<p></p>
+		    </div>
+	    </div>
+	</div> -->
+
+</div>
+
+<script type="text/javascript">
+	
+	function validate(data){
+		if(typeof data == 'undefined'){
+			return ' ';
+		} else {
+			return data;
+		}
+	}
+
+	// human readable datestring
+	var today = new Date();	
+	$('#date-string').html(today.toString().substr(0,15));
+
+	$.get( "http://chartapi.finance.yahoo.com/instrument/1.0/%5EDJI/chartdata;type=quote;range=1d/csv", function( data ) {
+		var djidataStr = new String(data);
+		var djilines = djidataStr.split('\n');
+		console.log(djilines);
+		console.log(djilines[17]);
+		console.log(parseInt(djilines[8].split(":")[1]));
+		
+		var djivalues = ['DJI'];
+		var timevalues = ['time'];
+
+		for(var i = 17; i < djilines.length; i++){
+			var minuteValues = djilines[i].split(',');
+			djivalues.push(((parseInt(minuteValues[1])/parseInt(djilines[8].split(":")[1]))-1)*100);
+			var date = new Date(0);
+			date.setUTCSeconds(parseInt(minuteValues[0]));
+			// if(date.getHours() > 12){
+			// 	date.setHours(date.getHours()-12);
+			// }
+			date = date.toTimeString();
+			timevalues.push(date.substr(0, 5));
+		}
+		console.log(timevalues);
+		console.log(djivalues.length);
+
+		var overview = c3.generate({
+			bindto: '#chart1',
+			padding: {
+			    top: 10,
+			    right: 30,
+			    bottom: 10,
+			    left: 50,
+			},
+		    data: {
+		        x: 'time',
+			 	x_format: '%H:%M',
+		        columns: [
+		        	timevalues,
+		            djivalues.slice(0, djivalues.length - 1)
+		        ]
+		    },
+		    axis: {
+		        x: {
+		            type: 'timeseries',
+		            localtime: true,
+		            tick: {
+		                count: 60, 
+		                format: '%H:%M'
+		            }
+		        }
+		    },
+		    point: {
+			    show: false
+			},
+			grid: {
+		        x: {
+		            lines: [{value: '9:55', text: ''}]
+		        }
+		    }, 
+		    zoom: {
+		        enabled: true
+		    }
+		});
+
+	});
+
+	// $.getJSON( "https://www.kimonolabs.com/api/c5fe768s?apikey=13cb3f7fe3ebc828ba331ee5923c2534&day=14&month=4", function( data ) {
+	//   // console.log(data.results.collection1);
+	//   var currentDate;
+
+	//   for (i in data.results.collection1){
+	//   	if(data.results.collection1[i].date){
+	//   		currentDate = data.results.collection1[i].date;
+	//   		$('#table tr:last').after('<tr><td>'+data.results.collection1[i].date+'</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+	//   	} else {
+	//   		$('#table tr:last').after('<tr><td></td><td>'+validate(data.results.collection1[i].event.text)+'</td><td>'+data.results.collection1[i]['value']+'</td><td>'+data.results.collection1[i].prior+'</td><td>'+data.results.collection1[i].actual+'</td><td>'+data.results.collection1[i].time+'</td><td>'+data.results.collection1[i].for+'</td></tr>');
+	//   	}
+	//   }
+	// });
+	
+	function crawl(crawlData, currentIndex, tableId){
+		if(crawlData[currentIndex].event.text){
+			if(crawlData[currentIndex].value){
+				console.log(tableId+' - new card with value');
+				$('.container').append('<div class="panel panel-default col-sm-6 col-sm-offset-3 released"><div class="row"><div class="col-xs-12"><h3>'+crawlData[currentIndex].event.text+'</h3><p>'+crawlData[currentIndex].time+'</p> <table class="table table-bordered" id="table'+(tableId+1)+'"> <tr> <th>Value</th> <th>Prior</th> <th>Actual</th> <th>Time</th> <th>For</th> </tr> </table></div> </div> </div></div></div>');
+				crawl(crawlData, currentIndex+1, tableId+1);
+				$('#table'+(tableId+1)+' tr:last').after('<tr><td>'+crawlData[currentIndex]['value']+'</td><td>'+crawlData[currentIndex].prior+'</td><td>'+crawlData[currentIndex].actual+'</td><td>'+crawlData[currentIndex].time+'</td><td>'+crawlData[currentIndex].for+'</td></tr>');
+				crawl(crawlData, currentIndex+1, tableId+1);
+			} else {
+				console.log(tableId+' - new card with no value');
+				$('.container').append('<div class="panel panel-default col-sm-6 col-sm-offset-3 released"><div class="row"><div class="col-xs-12"><h3>'+crawlData[currentIndex].event.text+'</h3><p>'+crawlData[currentIndex].time+'</p> <table class="table table-bordered" id="table'+(tableId)+'"> <tr> <th>Value</th> <th>Prior</th> <th>Actual</th> <th>Time</th> <th>For</th> </tr> </table></div> </div> </div></div></div>');
+				crawl(crawlData, currentIndex+1, tableId);
+			}	
+		} else {
+			console.log(tableId+' - append to existing card '+tableId);
+			$('#table'+tableId+' tr:last').after('<tr><td>'+crawlData[currentIndex]['value']+'</td><td>'+crawlData[currentIndex].prior+'</td><td>'+crawlData[currentIndex].actual+'</td><td>'+crawlData[currentIndex].time+'</td><td>'+crawlData[currentIndex].for+'</td></tr>');
+			crawl(crawlData, currentIndex+1, tableId);
+		}
+	}
+
+	$.getJSON( "https://www.kimonolabs.com/api/c5fe768s?apikey=13cb3f7fe3ebc828ba331ee5923c2534&day=29&month=7", function( data ) {
+		
+		console.log(data);
+		crawl(data.results.collection1, 0, 0);
+
+		// for (i in data.results.collection1){
+		//   if(data.results.collection1[i].event.text && data.results.collection1[i].value){
+		//     $('.container').append('<div class="panel panel-default col-sm-6 col-sm-offset-3 released"><div class="row"><div class="col-xs-12"><h3>'+data.results.collection1[i].event.text+'</h3><p>'+data.results.collection1[i].time+'</p> <table class="table table-bordered" id="table'+i+'"> <tr> <th>Value</th> <th>Prior</th> <th>Actual</th> <th>Time</th> <th>For</th> </tr> </table></div> </div> </div></div></div>');
+		//   } 
+		//   $('#table'+i+' tr:last').after('<tr><td>'+data.results.collection1[i]['value']+'</td><td>'+data.results.collection1[i].prior+'</td><td>'+data.results.collection1[i].actual+'</td><td>'+data.results.collection1[i].time+'</td><td>'+data.results.collection1[i].for+'</td></tr>');
+
+		//   if(!data.results.collection1[i].event.text && data.results.collection1[i].value){
+		//     $('.container .event').last().append('<div class="panel panel-default col-sm-6 col-sm-offset-3 upcoming"> <div class="row"> <div class="col-xs-12"> <h3>'+data.results.collection1[i].event.text+'</h3> <p>'+data.results.collection1[i].time+'</p></div>');
+		//   } 
+		// }
+	});
+
+</script>
+</body>
+</html>
